@@ -1,0 +1,48 @@
+Hongxiao Yu
+
+General comments:
+
+You are becoming an excellent R coder! Continuing to work on your coding, as well as proper documentation,
+will serve you well throughout your professional career. This was a tough project. You had a few slips, but
+otherwise did well. I was especially pleased to see you handle the statistics very nicely, given that you
+are also in the statistic course! I encourage you to keep using R and the associated tools in your work.
+You will get better and better at it and will be glad that you stuck with it. It has been a pleasure having
+you in the course this semester.
+
+Total score: 78
+
+
+
+Reproducibilty: 7
+
+Correctly initiated a repo, established a .gitignore file, and tracked the project. Readme file is sparse and not descriptive for outsiders. Commits are infrequent and not very descriptive.
+
+Neatness: 10
+
+A well-documented and well-formatted project with appropriate narrative. Adherence to the style guide throughout
+the notebook. Very clean, readable output.
+
+Functions: 5
+
+Did not create a function for identifying residuals. Function for Likert scoring incorporated into script. No functions file. No argument definitions. No sourcing.
+
+Data prep: 11
+
+All data read in, checked for primary keys, found bad key in GPA, scored Likert items correctly, and joined all files. Minor error is that further exploration would have shown bad key to be a typo so that two rows of data could have been retained. More major error is that largest 10% of residuals were not eliminated before calculating GPA averages, as requested.
+
+Graphs: 15
+
+Graphs are attractive, well-labeled, and appropriate for investigating the research questions.
+
+Descriptive statistics: 15
+
+Descriptive statistics are well-chosen and correct. They are nicely tabled to provide further details about what is
+displayed in the graph. Statistics answer the research questions.
+
+Inferential statistics: 15
+
+Inferential statistics are correctely calculated and interpreted.
+
+Team collaboration: 0
+
+No pull request ever received.
