@@ -1,0 +1,342 @@
+---
+title: "“Hongxiao Yu Final Report”"
+author: "“Hongxiao Yu”"
+date: "“2 May 2020”"
+output:
+  html_document:
+    df_print: paged
+Output: “html_notebook”
+---
+
+***
+### source function
+```{r}
+library(here)
+source(here("Function", "function for analysis.R"))
+```
+***
+
+
+***
+### Part #l Data Preparation
+*1.1 tidy the Job Prep Demographics*
+*1.1.1Import and tidy the Job Prep Demographics file into a tibble named “demo”.*
+```{r}
+# note that I have transfer the discipline column on Excel.
+library(here)
+library(tidyverse)
+demo <- read_csv(here("Data","Job Prep Demographics2.csv"),
+                 skip = 5, 
+                 col_names = TRUE,
+                 col_types = list(ID = col_double(), 
+                                  "School Code" = col_character(), 
+                                  Age = col_character(),
+                                  Gender = col_character()))
+   
+demo
+```
+
+
+*1.1.2 Eliminate rows with missing data*
+```{r}
+demo <- na.omit(demo)
+demo
+```
+
+
+*1.1.3 A primary key for the demo data is ID. Let's make sure that we have a clean primary key.*
+```{r}
+check.demo <- demo %>%
+  count(ID)
+check.demo %>%
+ 	  filter(n > 1)
+```
+
+
+
+*1.2 tidy Job Prep GPA Data*
+*1.2.1 Import and tidy Job Prep GPA Data file into a tibble named “gpa”.*
+```{r}
+gpa <- read_csv(here("Data","Job Prep GPA Data.csv"),
+                 skip = 4, 
+                 col_names = TRUE, 
+                 col_types = list(ID = col_double(), 
+                                  "School Code" = col_character(), 
+                                  Age = col_character(),
+                                  Gender = col_character()))
+
+gpa
+```
+
+
+*1.2.2 Let's make sure that we have a clean key from the gpa file.*
+```{r}
+check.gpa <- gpa %>%
+  count(ID)
+check.gpa %>%
+ 	  filter(n > 1)
+```
+
+
+*1.2.3 It seems there have two students who have the same ID. Let's see what happened.*
+```{r}
+  subset(gpa, ID == 659)
+# Did we typed the wrong ID number? We can look at other data to check for that.
+```
+
+
+*1.2.4 Let's compare gpa file with the demo file focusing on the student ID 659*
+```{r}
+subset(demo, ID == 659)
+```
+
+
+*1.2.5 We just can find the student ID 659 in School Code 4. Let's see if we could find if we type the wrong ID number in gpa file*
+```{r}
+subset (demo, "School Code" == 5, Age == 22, Gender = m)
+# We could not find the student ID 659 in School code 5. We should remove this row faom gpa data. 
+# If possilbe, I hope I could contact with the person who typed the data.
+```
+
+
+*1.2.6  Let's remove this row from gpa data. *
+```{r}
+gpa <- gpa %>%
+  filter(!(ID == 659 & `School Code` == 5))
+gpa
+```
+
+
+*1.2.7 Let's verify consistency between first and second semester. We could predict second semester GPA from first semester GPA*
+```{r}
+ggplot(data = gpa, mapping = aes(x = `S1 GPA`, y = `S2 GPA`)) +
+  geom_point() +
+   labs(x= "First Semester GPA", y = "Second Semester GPA", 
+        title = "Scatterplot of first semester GPA and second semester GPA") + 
+  stat_smooth()
+
+```
+
+
+*1.2.8 Let's average GPAs using a weighted average based on the number of credits taken in a semester.*
+```{r}
+gpa <- gpa %>%
+  mutate(sygpa = (`S1 Credits`*`S1 GPA` + `S2 Credits`*`S2 GPA`)/(`S1 Credits` + `S2 Credits`) )
+gpa
+```
+
+*1.3 Import and tidy Job Prep Survey file*
+*1.3.1 import data and skip the title and empty rows*
+```{r}
+survey <- read_csv(here("Data","Job Prep Survey Results.csv"),
+                 skip = 3, 
+                 col_names = TRUE)
+```
+
+*1.3.2 account for reverse-scored items*
+```{r}
+survey[, c("Item 4", "Item 9", "Item 12", "Item 13")] <- 
+  7 - survey[, c("Item 4", "Item 9", "Item 12", "Item 13")]
+
+survey
+```
+
+*1.3.3 sum the items as an indicator of optimism about future job prospects*
+```{r}
+survey <- survey %>%
+  mutate(optimism = rowSums(select(., 2:15)))
+
+survey
+```
+
+
+*1.3.4 Let's make sure that we have a clean key from the survey file.*
+```{r}
+check.survey <- survey %>%
+  count(ID)
+check.survey %>%
+ 	  filter(n > 1)
+```
+
+*1.4 Let's combine the data. *
+
+```{r}
+data <-
+  demo %>%
+  left_join(gpa) %>%
+  left_join(survey)
+data
+```
+
+
+*1.5 Make the missing data explicit*
+```{r}
+data <- data[complete.cases(data),]
+sum(table(data$ID)) == length(data$ID)
+
+data
+
+# 532/739 = 72%
+# It is consistent with Mr Habernooth's letther, the response rate is 72%.
+```
+***
+
+
+***
+### Section #2
+### Question 1: Is senior-year grade point average (GPA) related to the degree of optimism about future employment?
+*2.1 Scatterplot of Senior-year GPA and optimism*
+```{r}
+ggplot(data = data, mapping = aes(x = sygpa, y = optimism)) +
+  geom_point() +
+   labs(x= "Senior-year GPA", y = "The degree of optimism about future employment", 
+        title = "Scatterplot of Senior-year GPA and optimism") + 
+  stat_smooth(method = "lm")
+# From the scateerpoint, It seems senior-year grade point average (GPA) is not tightly related to the degree of optimism about future employment.
+```
+
+
+*2.2 Correlation of senior-year GPA and optimism*
+```{r}
+cor(data$sygpa,data$optimism)
+# The correlation of senior-year GPA and optimism is in the lower level.
+```
+
+
+*2.3 Q-Q plot for residuals in the study of senior-year GPA and optimism *
+```{r}
+std_residual <- rstandard(model1)
+qqnorm(std_residual)
+qqline(std_residual)
+# It seems there is the higher tails for Q-Q plot.
+```
+*2.3 Model summary*
+```{r}
+model1 <- lm(data$optimism ~ data$sygpa)
+summary(model1)
+# p = 0.642 > 0.01, we conclude that senior-year grade point average (GPA) is not significantly related to the degree of optimism about future employment.
+```
+***
+
+
+
+***
+### Section #3
+### Question 2: Is the relationship of GPA and optimism consistent or different for different categories of disciplines?
+*3.1 Boxplot of optimism scores by Disciplines*
+```{r}
+ggplot(data, aes(x = Discipline, y = optimism)) +
+  geom_boxplot() +
+  labs(x= "Discipline", y = "Optimism Scores", 
+        title = "Optimism Scores by Disciplines")
+
+```
+
+
+*3.2 Summary data for optimism and discipline *
+```{r}
+tapply(data$optimism, data$Discipline, summary)
+tapply(data$optimism, data$Discipline, sd)
+```
+
+
+*3.3 Boxplot of Senior-year GPA by Disciplines*
+```{r}
+ggplot(data, aes(x = Discipline, y = sygpa)) +
+  geom_boxplot() +
+  labs(x= "Discipline", y = "Senior-year GPA", 
+        title = "Senior-year GPA by Disciplines")
+```
+
+
+*3.4 Summary data for Senior-year and discipline *
+```{r}
+tapply(data$sygpa, data$Discipline, summary)
+tapply(data$sygpa, data$Discipline, sd)
+```
+
+
+*3.5 Scatterplot of Senior-year GPA and optimism by discipline*
+```{r}
+ggplot(data = data, mapping = aes(x = sygpa, y = optimism, col = Discipline)) +
+  geom_point() +
+   labs(x= "Senior-year GPA", y = "The degree of optimism about future employment", 
+        title = "Scatterplot of Senior-year GPA and optimism") + 
+  stat_smooth(method = "lm")
+```
+
+*3.6 check for interaction of Senior-year GPA and discipline*
+```{r}
+model2 <- data$optimism ~ data$sygpa*data$optimism
+model2.out <- lm(model2)
+anova(model2.out)
+```
+
+*3.7 Normal Q-Q plot* 
+```{r}
+model2.1 <- data$optimism ~ data$sygpa + data$Discipline
+model2.1.out <- lm(model2.1)
+plot(model2.1.out, 2)
+
+```
+
+*3.8 Summary of Senior-year GP,optimism and discipline*
+```{r}
+anova(model2.1.out)
+# According the p<0.01 and the scatterplot of Senior-year GPA and optimism by discipline, we con conclude that the relationship of GPA and optimism is different for different categories of disciplines
+```
+***
+
+
+
+***
+### Section 4
+### Question 3: Is the level of optimism different for different categories of disciplines?
+*4.1 The boxplot of optimism by discipline*
+```{r}
+ggplot(data, aes(x = Discipline, y = optimism)) +
+  geom_boxplot() +
+  labs(x= "Discipline", y = "Optimism", 
+        title = "Optimism by Discipline")
+
+```
+
+
+*4.2 Five-number summaries, means and standard deviations for optimism *
+```{r}
+tapply(data$optimism, data$Discipline, summary)
+tapply(data$optimism, data$Discipline, sd)
+```
+
+
+*4.3 Normal Q-Q plot for residuals in the study of optimism and discipline*
+```{r}
+model3 <- data$optimism ~ data$Discipline
+model3.out <- lm(model3)
+ggplot(model3.out, aes(sample = rstandard(model3.out))) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(x = "Theoretical Quantiles",
+       y = "Sample Quantiles",
+      title = "Q-Q plot for residuals in the study of optimismand discipline")
+
+```
+
+*4.4 The model summary in the study of optimism and discipline*
+```{r}
+aov.model3 <- aov(data$optimism ~ data$Discipline)
+aov.model3
+summary(aov.model3)
+# The null hypothesis of equal means can be rejected with p< 0.01.
+# and conclude that the level of optimism is different for different categories of disciplines
+```
+
+
+*4.5 Tukey multiple comparisons of means*
+```{r}
+Tukey.results <- TukeyHSD(aov.model3)
+Tukey.results
+# From this table, we can conclude that most of pairs are different with 95% certain (p<0.01) except of Formal Sciences-Applied Sciences pair and Social Sciences-Natural Sciences pair,
+```
+
+
